@@ -194,7 +194,7 @@ namespace NaturalLanguageProcessing
             public string tag { get; set; }
         }
         
-        private void btnFindRoot_Click_V2(object sender, EventArgs e)
+         private void btnFindRoot_Click_V2(object sender, EventArgs e)
         {
             List<RowDetail> rowList = new List<RowDetail>();
             List<StemDetail> stemList = new List<StemDetail>();
@@ -236,7 +236,7 @@ namespace NaturalLanguageProcessing
 
                     if (rowList.Where(x => x.keyTokenize.Contains(variant.Trim()) && x.keyTokenize.Length > 1).Any() || rowList.Where(x => x.keyTokenize.Contains(searched_word.Trim()) && x.keyTokenize.Length > 1).Any())
                     {
-                        rowTokenList.AddRange(rowList.Where(x => x.keyTokenize.Contains(variant.Trim()) && x.keyTokenize.Length > 1).ToList());
+                        rowTokenList.AddRange(rowList.Where(x => x.keyTokenize.Contains(variant.Trim()) && x.keyTokenize.Length > 1).ToList().Except(rowTokenList));
                     }
 
                     if (rowList.Where(x => x.key == variant.Trim()).Any() || rowList.Where(x => x.key == searched_word.Trim()).Any())
@@ -288,69 +288,78 @@ namespace NaturalLanguageProcessing
                 string stem2 = string.Empty;
                 string key2 = string.Empty;
                 string searchToken = string.Empty;
+                bool similarityControl = false;
                 List<RowDetail> searchTokenList = new List<RowDetail>();
                 searched_wordList.ForEach(searched_word2 =>
                  {
                      if (searched_word2.stem == txtTokenize.Lines[searched_word2.tokenIndex])
                      {
                          searchToken = searched_word2.stem;
+                         similarityControl = true;
                      }
                      else
                      {
                          searchToken = txtTokenize.Lines[searched_word2.tokenIndex];
+
                      }
+
 
                      if (rowTokenList.Where(x => x.keyTokenize.Contains(searchToken.Trim())).Any())
                      {
                          key2 = searchToken.Trim();
                          searchTokenList = searchTokenList.Count > 0 ? searchTokenList.FindAll(x => x.key.Contains(key2)) : rowTokenList.FindAll(x => x.key.Contains(key2));
                      }
+
                  });
 
                 List<StemSimilarityRates> similarityRateList = new List<StemSimilarityRates>();
                 decimal benzerlik = 0;
                 bool flagSimilarity = false;
                 List<int> indexList = new List<int>();
-                for (int j = 0; j < searchTokenList.Count; j++)
+
+                if (similarityControl)
                 {
-                    decimal sayac = 0;
-                    for (int i = 0; i < txtTokenize.Lines.Length; i++)
+                    for (int j = 0; j < searchTokenList.Count; j++)
                     {
-                        string aa = txtTokenize.Lines[i];
-
-                        if (searchTokenList[j].keyTokenize.Contains(aa))
+                        decimal sayac = 0;
+                        for (int i = 0; i < txtTokenize.Lines.Length; i++)
                         {
-                            if (!indexList.Contains(i))
+                            string aa = txtTokenize.Lines[i];
+
+                            if (searchTokenList[j].keyTokenize.Contains(aa))
                             {
-                                indexList.Add(i);
+                                if (!indexList.Contains(i))
+                                {
+                                    indexList.Add(i);
+                                }
+                                sayac = sayac + 1;
+                                flagSimilarity = true;
                             }
-                            sayac = sayac + 1;
-                            flagSimilarity = true;
+                            else
+                            {
+                                sayac = flagSimilarity ? sayac : 0;
+                                flagSimilarity = false;
+                            }
                         }
-                        else
+
+                        decimal bb = Convert.ToDecimal((indexList.Max() - indexList.Min()) + 1);
+                        benzerlik = (sayac / bb);
+
+                        similarityRateList.Add(new StemSimilarityRates
                         {
-                            sayac = flagSimilarity ? sayac : 0;
-                            flagSimilarity = false;
+                            rowDetail = searchTokenList[j],
+                            similarityRates = benzerlik
+                        });
+
+                        string[] words = textBox3.Text.Trim().Split(' ');
+                        string kk = string.Empty;
+                        foreach (var item in indexList)
+                        {
+                            kk = string.Join(" ", kk, words[item]).Trim();
                         }
+
+                        textBox3.Text = textBox3.Text.Replace(kk.Trim(), similarityRateList.OrderByDescending(x => x.similarityRates).FirstOrDefault().rowDetail.key + ("[" + similarityRateList.OrderByDescending(x => x.similarityRates).FirstOrDefault().rowDetail.tag + "] "));
                     }
-
-                    decimal bb = Convert.ToDecimal((indexList.Max() - indexList.Min()) + 1);
-                    benzerlik = (sayac / bb);
-
-                    similarityRateList.Add(new StemSimilarityRates
-                    {
-                        rowDetail = searchTokenList[j],
-                        similarityRates = benzerlik
-                    });
-
-                    string[] words = textBox3.Text.Trim().Split(' ');
-                    string kk = string.Empty;
-                    foreach (var item in indexList)
-                    {
-                        kk = string.Join(" ", kk, words[item]).Trim();
-                    }
-
-                    textBox3.Text = textBox3.Text.Replace(kk.Trim(), similarityRateList.OrderByDescending(x => x.similarityRates).FirstOrDefault().rowDetail.key + ("[" + similarityRateList.OrderByDescending(x => x.similarityRates).FirstOrDefault().rowDetail.tag + "] "));
                 }
             }
 
